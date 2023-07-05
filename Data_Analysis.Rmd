@@ -1,0 +1,305 @@
+---
+title: "Project_IST687"
+output: html_document
+date: "2022-11-17"
+---
+
+#Loading the Libraries and reading the data
+
+```{r}
+#Loading the libraries
+library(imputeTS)
+library(forecast)
+library(tidyverse)
+library(ggcorrplot) # for ggcorrplot()
+
+#Reading the data
+data <- read.csv("HMO_data.csv", stringsAsFactors = FALSE)
+#7,582 X 14
+
+#Displaying first 6 rows of the data
+head(data)
+
+```
+
+```{r}
+#renaming columns
+names(data)[1] <- "id"
+
+head(data)
+```
+
+```{r}
+#Checking the data types of the dataframe
+str(data)
+```
+#Cleaning the Data
+
+```{r}
+#Checking and cleaning the data
+sum(is.na(data))
+
+#So, there are 158 NAs present in the data
+```
+#Checking every column in the dataframe for data consistency and NAs
+```{r}
+#Age
+unique(data$age)
+sum(is.na(data$age))
+#0
+
+#Understanding the descriptive statistics for age
+summary(data$age)
+
+#Creating a histogram for the age
+hist(data$age, breaks= 20)
+#From the histogram we can observe that the data is non-uniform as
+#The there are lot of people with age below 20.
+
+#Plotting a box plot for age
+boxplot(data$age)
+
+```
+
+
+```{r}
+#BMI
+unique(data$bmi)
+
+#Checking for NAs
+sum(is.na(data$bmi))
+#78
+
+#Interpolating the BMI column
+data$bmi <- na_interpolation(data$bmi)
+#Checking for NAs again to confirm if all the values have been interpolated
+sum(is.na(data$bmi))
+
+
+#Creating a histogram for the age
+hist(data$bmi, breaks= 20) 
+#We can observe from the histogram that the distribution is normal
+
+
+#Plotting a box plot for age
+boxplot(data$bmi)
+```
+
+
+
+```{r}
+#children
+unique(data$children)
+
+#Checking for NAs
+sum(is.na(data$children))
+#0
+
+#Creating a histogram for children
+hist(data$children)
+
+#Creating boxpot for children
+boxplot(data$children)
+```
+
+```{r}
+#smoker
+unique(data$smoker)
+#"yes" "no"
+
+#Checking for NAs
+sum(is.na(data$smoker))
+#0
+
+
+# #Trimming the string
+# data$smoker <- trimws(data$smoker, which = c("both"), whitespace = "[ \t\r\n]")
+
+
+```
+
+```{r}
+#location
+unique(data$location)
+#"CONNECTICUT"   "RHODE ISLAND"  "MASSACHUSETTS" "PENNSYLVANIA"  "MARYLAND"      "NEW JERSEY"    "NEW YORK"
+sum(is.na(data$location))
+#0
+
+```
+
+```{r}
+#location type
+
+unique(data$location_type)
+#"Urban"   "Country"
+sum(is.na(data$location_type))
+#0
+```
+
+```{r}
+#education level 
+
+unique(data$education_level)
+#"Bachelor"          "Master"            "PhD"               "No College Degree"
+sum(is.na(data$education_level))
+#0
+```
+```{r}
+#Yearly Physical
+
+unique(data$yearly_physical)
+#"No"  "Yes"
+sum(is.na(data$yearly_physical))
+#0
+
+```
+```{r}
+#Exercise
+
+unique(data$exercise)
+#"Active"     "Not-Active"
+sum(is.na(data$exercise))
+#0
+```
+```{r}
+#Married
+
+unique(data$married)
+#"Married"     "Not_Married"
+sum(is.na(data$married))
+#0
+```
+
+
+```{r}
+#Hypertension
+
+unique(data$hypertension)
+#0  1 NA
+
+#Checking for NAs
+sum(is.na(data$hypertension))
+#80
+
+#Interpolating the NAs
+data$hypertension <- na_interpolation(data$hypertension)
+
+#Checking for NAs again QC step
+sum(is.na(data$hypertension))
+#0
+
+#Checking the type of the data
+class(data$hypertension)
+"numeric"
+
+#As the data is inconsistent changing the type of integer
+data$hypertension <- as.integer(data$hypertension)
+
+head(data$hypertension)
+```
+
+```{r}
+#Gender
+
+unique(data$gender)
+#"female" "male" 
+sum(is.na(data$gender))
+#0
+```
+
+```{r}
+#Cost
+
+#Checking for NAs
+sum(is.na(data$cost))
+#0
+
+#Descriptive statistics for cost
+summary(data$cost)
+# Min. 1st Qu.  Median  Mean 3rd Qu.    Max. 
+#   2     970    2500    4043    4775   55715 
+
+#Creating histogram for the cost
+hist(data$cost, breaks = 50) 
+#The distribution is Right-skewed
+
+#Creating a boxplot for cost
+boxplot( data$cost, data = data)
+
+#QC Step
+#Finally checking again if NAs are present
+sum(is.na(data))
+#0 <- No NAs
+```
+
+
+```{r}
+#Bucketing the Age
+data$Age_Category <- ifelse(data$age < 26, "Young Adults", NA)
+data$Age_Category <- ifelse(data$age >= 26 & data$age < 36, "Adults", data$Age_Category)
+data$Age_Category <- ifelse(data$age >= 36 & data$age < 51, "Middle Aged Adults", data$Age_Category)
+data$Age_Category <- ifelse(data$age >= 51, "Old Aged Adults", data$Age_Category)
+
+head(data)
+```
+#Formatting the data
+```{r}
+data_new <- data
+
+#Changing the type of the data_new
+
+#smoker
+data_new$smoker <- ifelse(data_new$smoker == "yes", 1, 0)
+class(data_new$smoker)
+data_new$smoker <- as.integer(data_new$smoker)
+
+#Exercise
+data_new$exercise <- ifelse(data_new$exercise == "Active", 1, 0)
+class(data_new$exercise)
+data_new$exercise <- as.integer(data_new$exercise)
+
+#Married 
+data_new$married <- ifelse(data_new$married == "Married", 1, 0)
+class(data_new$married)
+data_new$married <- as.integer(data_new$married)
+
+#Gender
+data_new$gender <- ifelse(data_new$gender == "male", 1, 0)
+class(data_new$gender)
+data_new$gender <- as.integer(data_new$gender)
+
+#Yearly Physical
+data_new$yearly_physical <- ifelse(data_new$yearly_physical == "Yes", 1, 0)
+class(data_new$yearly_physical)
+data_new$yearly_physical <- as.integer(data_new$yearly_physical)
+
+#Location Type
+data_new$location_type <- ifelse(data_new$location_type == "Urban", 1, 0)
+class(data_new$location_type)
+data_new$location_type <- as.integer(data_new$location_type)
+
+
+#Re-formatting the data
+data_new <- data_new[,c(2:5,7,9:14)]
+
+head(data_new)
+
+
+
+```
+
+#Finding the correlation between the attributes
+```{r}
+#Creating a heatmap for correlation
+cors <- cor(data_new, use = "pairwise.complete.obs")
+
+# using ggcorrplot() to plot the correlation matrix heat map
+ggcorrplot(cors)
+
+
+#From the correlation heat map we observed that smoker, age, bmi and 
+#exercise are the significant attributes to cost
+
+```
+
+
